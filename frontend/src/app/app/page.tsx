@@ -41,10 +41,10 @@ function SpecimenCard({tokenId, onLoad}: {tokenId: bigint; onLoad: (id: string, 
   const overdue = active && now >= Number(commitment.deadline);
 
   return (
-    <Link href={`/stone/${tokenId}`} className="group flex flex-col gap-4">
+    <Link href={`/stone/${tokenId}`} className="group flex w-full max-w-[240px] flex-col gap-4">
       <Stone svg={svg} commitment={commitment} now={now} size={240} />
 
-      <div className="flex flex-col gap-2" style={{width: 240}}>
+      <div className="flex w-full flex-col gap-2">
         <span className="label">Specimen {String(tokenId).padStart(3, "0")}</span>
         <p className="font-display group-hover:text-accent leading-tight font-semibold break-all">
           {commitment.repo}

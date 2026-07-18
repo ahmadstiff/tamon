@@ -105,9 +105,9 @@ export default function Landing() {
             </div>
           </div>
 
-          <div id="stone" className="flex shrink-0 flex-col gap-4">
+          <div id="stone" className="flex w-full max-w-[320px] shrink-0 flex-col gap-4">
             <LiveStone />
-            <p className="text-muted max-w-[320px] text-xs">
+            <p className="text-muted text-xs">
               A real commitment on-chain, weathering right now. Nothing is animating a mockup —
               the artwork is a function of <span className="data text-text">block.timestamp</span>,
               rendered by the contract itself.
@@ -115,27 +115,70 @@ export default function Landing() {
           </div>
         </section>
 
+        {/* Four numbered steps, because this genuinely is a sequence and the order carries
+            information the reader needs — particularly step 2, which is the one that trips
+            people up. */}
         <section id="how" className="border-crack border-t">
-          <div className="mx-auto grid max-w-5xl gap-10 px-6 py-16 md:grid-cols-3">
-            {[
-              {
-                k: "Money that keeps working",
-                v: "Your stake goes straight into shMON liquid staking. It earns for the whole period instead of sitting in idle escrow.",
-              },
-              {
-                k: "Consequence that is objective",
-                v: "Completion is read from GitHub — commits with real diffs on your own repo — not from you telling us you finished.",
-              },
-              {
-                k: "Consequence you feel early",
-                v: "The stone weathers as the deadline approaches. It is the only part of this system that speaks to you while you are still procrastinating.",
-              },
-            ].map((item) => (
-              <div key={item.k} className="flex flex-col gap-3">
-                <span className="label">{item.k}</span>
-                <p className="text-muted text-sm leading-relaxed">{item.v}</p>
-              </div>
-            ))}
+          <div className="mx-auto max-w-5xl px-6 py-16">
+            <div className="mb-10 flex flex-col gap-2">
+              <span className="label">How to use it</span>
+              <h2 className="font-display text-2xl font-extrabold">Four steps, about a minute.</h2>
+            </div>
+
+            <ol className="grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                {
+                  n: "01",
+                  k: "Connect and pick a repo",
+                  v: "Any public repo you own. Commits are counted against the GitHub account you link, so it has to be yours.",
+                },
+                {
+                  n: "02",
+                  k: "Set the target, then commit",
+                  v: "Choose how many commits and by when, and stake at least 0.1 MON. Only work pushed after this moment counts — the clock starts here.",
+                },
+                {
+                  n: "03",
+                  k: "Do the work",
+                  v: "Push real commits. Empty ones are ignored. Meanwhile the stone weathers: intact, worn, cracked.",
+                },
+                {
+                  n: "04",
+                  k: "Claim before the deadline",
+                  v: "Link GitHub once, then claim. We read your commits, sign the result, and the contract pays out. Miss the deadline and your stake goes to everyone who didn't.",
+                },
+              ].map((s) => (
+                <li key={s.n} className="flex flex-col gap-3">
+                  <span className="data text-accent text-[11px] tracking-[0.14em]">{s.n}</span>
+                  <span className="font-display border-crack border-t pt-3 font-semibold">
+                    {s.k}
+                  </span>
+                  <p className="text-muted text-sm leading-relaxed">{s.v}</p>
+                </li>
+              ))}
+            </ol>
+
+            <div className="border-crack mt-12 flex flex-col gap-6 border-t pt-10 md:flex-row md:gap-10">
+              {[
+                {
+                  k: "Where your stake sits",
+                  v: "In shMON liquid staking, earning for the whole period rather than idling in escrow. You get the yield too.",
+                },
+                {
+                  k: "What you need",
+                  v: "A wallet on Monad testnet and some MON from the faucet. The app will offer to switch networks for you.",
+                },
+                {
+                  k: "What we can and can't see",
+                  v: "Only public commits on the repo you named, by the account you linked. We never get write access.",
+                },
+              ].map((f) => (
+                <div key={f.k} className="flex flex-1 flex-col gap-2">
+                  <span className="label">{f.k}</span>
+                  <p className="text-muted text-sm leading-relaxed">{f.v}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 

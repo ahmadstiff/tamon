@@ -110,9 +110,13 @@ export function Stone({svg, commitment, now, size = 240}: Props) {
 
   return (
     <div ref={root} className="flex flex-col gap-3">
+      {/* `size` is an upper bound, not a fixed width. A hard width silently clips the stone on
+          narrow screens — the landing wrapper has overflow-hidden, so the page reports no
+          overflow while the artwork is being cut off. aspect-square keeps it square as it
+          shrinks. */}
       <div
-        className="relative bg-void border border-crack"
-        style={{width: size, height: size}}
+        className="bg-void border-crack relative aspect-square w-full border"
+        style={{maxWidth: size}}
         aria-label={`Stone classified ${CLASSIFICATION[cls].label} — ${CLASSIFICATION[cls].gloss}`}
       >
         {safeSvg ? (
@@ -124,7 +128,7 @@ export function Stone({svg, commitment, now, size = 240}: Props) {
 
       {/* The erosion line. The contract can only render five discrete states, so a stone at
           51% looks identical to one at 79%. This is the continuous signal that fills the gap. */}
-      <div className="flex flex-col gap-1.5" style={{width: size}}>
+      <div className="flex w-full flex-col gap-1.5" style={{maxWidth: size}}>
         <div className="h-px bg-crack overflow-hidden">
           <div ref={bar} className="h-px bg-accent origin-left" style={{transform: "scaleX(0)"}} />
         </div>
