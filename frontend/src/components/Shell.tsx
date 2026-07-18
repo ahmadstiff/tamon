@@ -20,34 +20,50 @@ export function Shell({children}: {children: React.ReactNode}) {
 
   return (
     <div className="min-h-dvh flex flex-col">
-      <header className="border-b border-crack">
-        <div className="mx-auto max-w-5xl px-6 py-5 flex items-baseline justify-between gap-4">
-          <Link href="/" className="font-display text-xl font-extrabold tracking-tight">
-            TAMON
-            <span className="data ml-3 text-[11px] tracking-[0.14em] text-muted font-normal">
-              MONAD TESTNET
-            </span>
+      {/* Four separate pieces of information — product, network, account, sign-out — that were
+          previously running together into one unreadable line. Each now sits in its own cell
+          with a hairline between, so the eye can find the one it wants. */}
+      <header className="border-crack border-b">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-stretch gap-y-3 px-6">
+          <Link
+            href="/app"
+            className="border-crack flex items-center py-4 pr-5 md:border-r"
+            aria-label="Tamon home"
+          >
+            <span className="font-display text-xl font-extrabold tracking-tight">TAMON</span>
           </Link>
 
-          {isConnected ? (
-            <div className="flex items-center gap-4">
-              <span className="data text-[11px] text-muted">{short(address!)}</span>
+          <div className="border-crack flex flex-col justify-center py-4 md:border-r md:px-5">
+            <span className="data text-muted text-[10px] tracking-[0.16em] uppercase">Network</span>
+            <span className="data text-[13px]">Monad testnet</span>
+          </div>
+
+          <div className="flex flex-1 items-center justify-end gap-5 py-4">
+            {isConnected ? (
+              <>
+                <div className="flex flex-col items-end justify-center">
+                  <span className="data text-muted text-[10px] tracking-[0.16em] uppercase">
+                    Wallet
+                  </span>
+                  <span className="data text-[13px]">{short(address!)}</span>
+                </div>
+                <button
+                  onClick={() => disconnect()}
+                  className="data border-crack text-muted hover:border-text hover:text-text border px-3 py-2 text-[11px] tracking-[0.14em] uppercase"
+                >
+                  Sign out
+                </button>
+              </>
+            ) : (
               <button
-                onClick={() => disconnect()}
-                className="data text-[11px] tracking-[0.14em] uppercase text-muted hover:text-text"
+                onClick={() => injected && connect({connector: injected})}
+                disabled={isPending || !injected}
+                className="data bg-accent text-void px-4 py-2 text-[11px] font-medium tracking-[0.14em] uppercase disabled:opacity-50"
               >
-                Disconnect
+                {isPending ? "Connecting…" : "Connect wallet"}
               </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => injected && connect({connector: injected})}
-              disabled={isPending || !injected}
-              className="data text-[11px] tracking-[0.14em] uppercase px-4 py-2 bg-accent text-void font-medium disabled:opacity-50"
-            >
-              {isPending ? "Connecting…" : "Connect wallet"}
-            </button>
-          )}
+            )}
+          </div>
         </div>
       </header>
 
