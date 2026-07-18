@@ -6,9 +6,9 @@ import {useReadContract} from "wagmi";
 import {LandingNav} from "@/components/LandingNav";
 import SpecularButton from "@/components/SpecularButton";
 import {Stone} from "@/components/Stone";
-import {useNow} from "@/hooks/useStone";
+import {useNow, useStone} from "@/hooks/useStone";
 import {EXPLORER} from "@/lib/chain";
-import {TAMON_ABI, TAMON_ADDRESS, decodeTokenUri, type Commitment} from "@/lib/tamon";
+import {State, TAMON_ABI, TAMON_ADDRESS} from "@/lib/tamon";
 
 // WebGL, and useless to the server. Loading it client-only keeps it out of the app routes
 // entirely — the dashboard never pays for the landing page's atmosphere.
@@ -21,27 +21,34 @@ const Galaxy = dynamic(() => import("@/components/Galaxy"), {ssr: false});
 function LiveStone() {
   const now = useNow();
 
-  const commitment = useReadContract({
+  // Walk back from the newest token to find one that is still Active.
+  //
+  // Pinning a fixed id would eventually leave the hero showing a long-dead stone frozen at
+  // 100% cracked — a page claiming "weathering right now" that visibly isn't. Three lookups
+  // is a cheap price for the claim staying true.
+  const nextId = useReadContract({
     address: TAMON_ADDRESS,
     abi: TAMON_ABI,
-    functionName: "getCommitment",
-    args: [1n],
-    query: {enabled: Boolean(TAMON_ADDRESS), refetchInterval: 5000},
+    functionName: "nextId",
+    query: {enabled: Boolean(TAMON_ADDRESS), refetchInterval: 15000},
   });
 
-  const uri = useReadContract({
-    address: TAMON_ADDRESS,
-    abi: TAMON_ABI,
-    functionName: "tokenURI",
-    args: [1n],
-    query: {enabled: Boolean(TAMON_ADDRESS), refetchInterval: 5000},
-  });
+  const latest = Number((nextId.data as bigint | undefined) ?? 1n) - 1;
+  const candidates = [latest, latest - 1, latest - 2].filter((n) => n >= 1);
 
-  const c = commitment.data as Commitment | undefined;
-  const art = typeof uri.data === "string" ? decodeTokenUri(uri.data) : null;
+  const a = useStone(candidates[0] !== undefined ? BigInt(candidates[0]) : undefined);
+  const b = useStone(candidates[1] !== undefined ? BigInt(candidates[1]) : undefined);
+  const c = useStone(candidates[2] !== undefined ? BigInt(candidates[2]) : undefined);
 
-  if (!c) return <div className="border-crack h-[320px] w-[320px] border opacity-30" />;
-  return <Stone svg={art?.svg ?? null} commitment={c} now={now} size={320} />;
+  const picked =
+    [a, b, c].find((s) => s.commitment?.state === State.Active) ??
+    [a, b, c].find((s) => s.commitment) ??
+    null;
+
+  if (!picked?.commitment) {
+    return <div className="border-crack h-[320px] w-[320px] border opacity-30" />;
+  }
+  return <Stone svg={picked.svg} commitment={picked.commitment} now={now} size={320} />;
 }
 
 export default function Landing() {

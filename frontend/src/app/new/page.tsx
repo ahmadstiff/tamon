@@ -33,7 +33,7 @@ export default function NewCommitment() {
   const receipt = useWaitForTransactionReceipt({hash});
 
   useEffect(() => {
-    if (receipt.isSuccess) router.push("/");
+    if (receipt.isSuccess) router.push("/app");
   }, [receipt.isSuccess, router]);
 
   async function submit(e: React.FormEvent) {

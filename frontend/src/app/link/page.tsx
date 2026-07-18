@@ -9,6 +9,7 @@ import {
   fetchBindingMessage,
   loginFromLinkToken,
   readNonce,
+  readReturnPath,
   saveSession,
 } from "@/lib/session";
 
@@ -42,7 +43,7 @@ function LinkInner() {
       const signature = await signMessageAsync({message});
       const session = await exchangeForSession(linkToken, address, signature);
       saveSession(session);
-      router.push("/");
+      router.push(readReturnPath());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not complete the link.");
     } finally {
