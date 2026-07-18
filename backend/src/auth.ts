@@ -11,6 +11,8 @@ export interface Session {
 
 const ISSUER = "tamon";
 const TTL = "12h";
+/// Separate audience so a link token can never be replayed as a session token.
+const LINK_AUDIENCE = "tamon:link";
 
 function secret(): Uint8Array {
   const s = process.env.JWT_SECRET;
@@ -43,6 +45,41 @@ export async function verifyWalletBinding(
     message: bindingMessage(githubLogin, nonce),
     signature,
   });
+}
+
+/// A link token is the server's own attestation that it just completed an OAuth exchange for
+/// this login, carrying the nonce that flow started with.
+///
+/// This exists because a wallet signature alone proves only that the wallet holder CONSENTED to
+/// bind to some login — never that they own it. Without a server-signed carrier, anyone could
+/// sign bindingMessage("someone-else", nonce) with their own wallet and be issued a session as
+/// that person, then settle against that person's repositories. The login has to travel back
+/// from the callback in something the client cannot forge.
+///
+/// Short-lived: it only has to survive the redirect back to the frontend and one signature.
+export async function issueLinkToken(githubLogin: string, nonce: string): Promise<string> {
+  return new SignJWT({githubLogin, nonce})
+    .setProtectedHeader({alg: "HS256"})
+    .setIssuer(ISSUER)
+    .setAudience(LINK_AUDIENCE)
+    .setIssuedAt()
+    .setExpirationTime("5m")
+    .sign(secret());
+}
+
+export async function readLinkToken(
+  token: string | undefined,
+): Promise<{githubLogin: string; nonce: string} | null> {
+  if (!token) return null;
+  try {
+    const {payload} = await jwtVerify(token, secret(), {issuer: ISSUER, audience: LINK_AUDIENCE});
+    const githubLogin = payload.githubLogin;
+    const nonce = payload.nonce;
+    if (typeof githubLogin !== "string" || typeof nonce !== "string") return null;
+    return {githubLogin, nonce};
+  } catch {
+    return null;
+  }
 }
 
 export async function issueSession(session: Session): Promise<string> {

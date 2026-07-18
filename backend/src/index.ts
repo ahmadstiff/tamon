@@ -5,7 +5,9 @@ import {
   bearer,
   bindingMessage,
   githubLoginFromCode,
+  issueLinkToken,
   issueSession,
+  readLinkToken,
   readSession,
   verifyWalletBinding,
 } from "./auth.js";
@@ -21,7 +23,14 @@ import {
 
 const app = new Hono();
 
-app.use("/*", cors({origin: (o) => o ?? "*", credentials: true}));
+/// Strict allowlist. Reflecting the caller's origin back while allowing credentials would let
+/// any site call this API with the browser's ambient auth. Sessions travel as Bearer tokens
+/// rather than cookies, so credentials are not needed at all.
+const allowedOrigins = [
+  process.env.FRONTEND_URL ?? "http://localhost:3000",
+  "http://localhost:3000",
+];
+app.use("/*", cors({origin: (o) => (o && allowedOrigins.includes(o) ? o : null), credentials: false}));
 
 app.get("/", (c) =>
   c.json({
@@ -41,43 +50,61 @@ app.get("/auth/message", (c) => {
   return c.json({message: bindingMessage(githubLogin, nonce)});
 });
 
-/// Step 2: GitHub sends the user back here. `state` carries the wallet address and nonce so the
-/// binding can be completed without any server-side session store.
+/// Step 2: GitHub sends the user back here. `state` carries the nonce the frontend generated
+/// before the redirect.
+///
+/// The login is returned to the frontend inside a server-signed link token, never as a plain
+/// value. That is the whole point: a raw login in a URL parameter would just come straight back
+/// in the next request, and the client could substitute anyone's name.
 app.get("/auth/github/callback", async (c) => {
   const code = c.req.query("code");
-  const state = c.req.query("state");
-  if (!code || !state) return c.json({error: "code and state required"}, 400);
+  const nonce = c.req.query("state");
+  if (!code || !nonce) return c.json({error: "code and state required"}, 400);
 
   try {
     const githubLogin = await githubLoginFromCode(code);
+    const linkToken = await issueLinkToken(githubLogin, nonce);
+
     const frontend = process.env.FRONTEND_URL ?? "http://localhost:3000";
     const url = new URL("/link", frontend);
-    url.searchParams.set("githubLogin", githubLogin);
-    url.searchParams.set("state", state);
+    url.searchParams.set("linkToken", linkToken);
     return c.redirect(url.toString());
   } catch (e) {
     return c.json({error: String(e)}, 502);
   }
 });
 
-/// Step 3: the wallet's signature over the binding message is exchanged for a session.
+/// Step 3: exchange the link token plus a wallet signature for a session.
+///
+/// Both halves are now proven rather than asserted. The GitHub half comes from the link token,
+/// which only this server can mint and only after a real OAuth exchange. The wallet half comes
+/// from a signature over a message containing that same login and nonce.
+///
+/// Taking githubLogin from the request body instead would let anyone sign
+/// bindingMessage("someone-else", nonce) with their own wallet and be issued a session as that
+/// person — and then settle against that person's repositories.
 app.post("/auth/session", async (c) => {
   const body = await c.req.json<{
-    githubLogin?: string;
+    linkToken?: string;
     wallet?: Address;
-    nonce?: string;
     signature?: `0x${string}`;
   }>();
 
-  const {githubLogin, wallet, nonce, signature} = body;
-  if (!githubLogin || !wallet || !nonce || !signature) {
-    return c.json({error: "githubLogin, wallet, nonce and signature required"}, 400);
+  const {linkToken, wallet, signature} = body;
+  if (!linkToken || !wallet || !signature) {
+    return c.json({error: "linkToken, wallet and signature required"}, 400);
   }
 
-  const ok = await verifyWalletBinding(wallet, githubLogin, nonce, signature);
+  const link = await readLinkToken(linkToken);
+  if (!link) return c.json({error: "link token invalid or expired"}, 401);
+
+  const ok = await verifyWalletBinding(wallet, link.githubLogin, link.nonce, signature);
   if (!ok) return c.json({error: "signature does not match wallet"}, 401);
 
-  return c.json({token: await issueSession({githubLogin, wallet})});
+  return c.json({
+    token: await issueSession({githubLogin: link.githubLogin, wallet}),
+    githubLogin: link.githubLogin,
+  });
 });
 
 /// The attestation endpoint.
