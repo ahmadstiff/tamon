@@ -32,15 +32,30 @@ const allowedOrigins = [
 ];
 app.use("/*", cors({origin: (o) => (o && allowedOrigins.includes(o) ? o : null), credentials: false}));
 
-app.get("/", (c) =>
-  c.json({
+/// Reports which configuration is missing instead of throwing. A bare 500 here is the worst
+/// possible signal during a demo — it looks like the service is broken when it is only unset.
+app.get("/", (c) => {
+  const missing = (
+    ["VERIFIER_PRIVATE_KEY", "JWT_SECRET", "TAMON_ADDRESS", "GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET"] as const
+  ).filter((k) => !process.env[k]);
+
+  let verifier: string | null = null;
+  try {
+    verifier = verifierAddress();
+  } catch {
+    /* reported via `missing` below */
+  }
+
+  return c.json({
     service: "tamon-attestation",
-    verifier: verifierAddress(),
-    contract: tamonAddress(),
+    ready: missing.length === 0,
+    missingConfig: missing,
+    verifier,
+    contract: process.env.TAMON_ADDRESS ?? null,
     chainId: 10143,
     trust: "Attestations are signed by a single hot key. Trust-minimized, not trustless.",
-  }),
-);
+  });
+});
 
 /// Step 1 of binding: the frontend asks what the wallet must sign.
 app.get("/auth/message", (c) => {

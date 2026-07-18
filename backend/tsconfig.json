@@ -3,7 +3,10 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": ["ES2022"],
+    // DOM is here for the web APIs this service uses — fetch, Response, Headers — not for any
+    // browser code. Without it the build passes locally on one @types/node version and fails on
+    // whatever TypeScript the deploy resolves.
+    "lib": ["ES2022", "DOM"],
     "types": ["node"],
     "strict": true,
     "noUncheckedIndexedAccess": true,
