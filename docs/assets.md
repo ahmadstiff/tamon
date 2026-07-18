@@ -1,5 +1,9 @@
 # Daftar Aset — Tamon
 
+> Palet di A4 adalah yang **benar-benar terpakai** dan sudah ter-deploy on-chain di
+> `contract/src/TamonArt.sol`. Rencana implementasi menyebut nilai lain; aset ini yang menang,
+> karena sudah permanen. Lihat [`docs/as-built.md`](as-built.md).
+
 Deadline submission: **19 Juli 2026, 23:59 UTC**.
 
 Aset dibagi tiga tingkat. **Tingkat 1 memblokir kode** — U7 tidak bisa ditulis sebelum geometri batu final. **Tingkat 2 memblokir submission.** **Tingkat 3 hanya memengaruhi hadiah viral.**

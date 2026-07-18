@@ -10,6 +10,13 @@ status: active
 
 # feat: Tamon — Commitment Staking + Dynamic Stone NFT - Plan
 
+> **Dokumen ini adalah catatan keputusan dari sebelum implementasi, dan sengaja dibiarkan apa adanya.**
+> Untuk path, alamat, rute, palet, dan perilaku yang sebenarnya, baca **[`docs/as-built.md`](../as-built.md)**.
+>
+> Yang berbeda dari rencana ini: rute (`/` jadi landing, dashboard pindah ke `/app`), path file
+> (`frontend/src/…`, bukan `frontend/…`), palet (aset on-chain ditulis lebih dulu dan menang),
+> plus landing page, React Bits, GSAP, dan pengelompokan dashboard yang tidak ada di rencana awal.
+
 ## Goal Capsule
 
 **Objective.** Developer mempertaruhkan MON pada target ngoding yang diverifikasi lewat GitHub. Stake diparkir di shMON sehingga menghasilkan yield; berhasil → modal + yield + bagian stake yang hangus; gagal → stake mengalir ke pool pemenang. Tiap komitmen adalah NFT "batu" yang melapuk secara visual seiring mendekati deadline, dirender penuh on-chain.
