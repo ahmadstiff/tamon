@@ -203,7 +203,18 @@ export default function StonePage() {
           )}
 
           <div className="grid grid-cols-2 gap-6">
-            <Row label="Target" value={`${commitment.achieved}/${commitment.target} commits`} />
+            {/* `achieved` is only written on-chain at settle, so it reads 0 no matter how much
+                you've pushed. Labelling it "recorded" stops that from looking like the app
+                failing to see your work. */}
+            <Row
+              label="Target"
+              value={`${commitment.achieved}/${commitment.target} commits`}
+              hint={
+                active
+                  ? "Recorded on-chain at settlement — claim to check GitHub now"
+                  : "Recorded on-chain"
+              }
+            />
             <Row
               label={active ? "Time left" : "Outcome"}
               value={
