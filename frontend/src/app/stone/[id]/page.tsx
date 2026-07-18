@@ -10,7 +10,7 @@ import {
   useWaitForTransactionReceipt,
   useWriteContract,
 } from "wagmi";
-import {ConnectPrompt, ErrorNote, Shell, StoneSkeleton} from "@/components/Shell";
+import {ConnectPrompt, ErrorNote, Shell, StoneSkeleton, useWrongChain} from "@/components/Shell";
 import {Stone} from "@/components/Stone";
 import {useNow, useStone} from "@/hooks/useStone";
 import {AttestError, requestAttestation} from "@/lib/attest";
@@ -35,6 +35,7 @@ export default function StonePage() {
   const tokenId = BigInt(params.id);
   const {address, isConnected} = useAccount();
   const now = useNow();
+  const wrongChain = useWrongChain();
 
   const {commitment, svg, isPending, refetch} = useStone(tokenId);
   const {writeContractAsync, isPending: signing} = useWriteContract();
@@ -71,7 +72,7 @@ export default function StonePage() {
   // as cracked. Left alone, the demo's climax is the exact moment where time alone does
   // nothing. reap() is permissionless, so whoever is looking can settle it.
   useEffect(() => {
-    if (!overdue || !isConnected || reaping || hash) return;
+    if (!overdue || !isConnected || wrongChain || reaping || hash) return;
     setReaping(true);
     void (async () => {
       try {
@@ -86,7 +87,7 @@ export default function StonePage() {
         setReaping(false); // someone else may have reaped it first; the poll will show that
       }
     })();
-  }, [overdue, isConnected, reaping, hash, tokenId, writeContractAsync]);
+  }, [overdue, isConnected, wrongChain, reaping, hash, tokenId, writeContractAsync]);
 
   useEffect(() => {
     if (receipt.isSuccess) {
@@ -257,11 +258,13 @@ export default function StonePage() {
             {active && !overdue && (
               <button
                 onClick={claim}
-                disabled={claiming || signing || receipt.isLoading}
+                disabled={claiming || signing || receipt.isLoading || wrongChain}
                 className="data bg-accent text-void px-5 py-3 text-[11px] font-medium tracking-[0.14em] uppercase disabled:opacity-50"
               >
-                {claiming
-                  ? "Checking GitHub…"
+                {wrongChain
+                  ? "Wrong network"
+                  : claiming
+                    ? "Checking GitHub…"
                   : signing
                     ? "Signing…"
                     : receipt.isLoading
@@ -275,7 +278,7 @@ export default function StonePage() {
             {claimShares > 0n && (
               <button
                 onClick={withdraw}
-                disabled={signing || receipt.isLoading}
+                disabled={signing || receipt.isLoading || wrongChain}
                 className="data border-accent text-accent border px-5 py-3 text-[11px] font-medium tracking-[0.14em] uppercase disabled:opacity-50"
               >
                 Withdraw to MON
