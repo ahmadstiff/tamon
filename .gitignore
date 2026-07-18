@@ -24,3 +24,7 @@ dist/
 skills-lock.json
 /package.json
 /bun.lock
+
+# Playwright screenshot output
+*.png
+!frontend/public/*.png
