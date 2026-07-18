@@ -1,0 +1,26 @@
+# Foundry
+contract/out/
+contract/cache/
+contract/broadcast/*/dry-run/
+
+# Node
+node_modules/
+.next/
+.vercel/
+dist/
+
+# Secrets — the verifier key must never land in git history (U9)
+.env
+.env.*
+!.env.example
+
+# Tooling scratch
+.playwright-mcp/
+.DS_Store
+
+# Skills installed via `npx skills add`
+.agents/
+.claude/
+skills-lock.json
+/package.json
+/bun.lock

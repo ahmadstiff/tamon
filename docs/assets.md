@@ -1,0 +1,129 @@
+# Daftar Aset — Tamon
+
+Deadline submission: **19 Juli 2026, 23:59 UTC**.
+
+Aset dibagi tiga tingkat. **Tingkat 1 memblokir kode** — U7 tidak bisa ditulis sebelum geometri batu final. **Tingkat 2 memblokir submission.** **Tingkat 3 hanya memengaruhi hadiah viral.**
+
+Kalau waktu habis, potong dari Tingkat 3 ke atas. Jangan pernah memotong Tingkat 2.
+
+---
+
+## Tingkat 1 — Memblokir kode (kerjakan lebih dulu)
+
+### A1. Batu dasar — satu `<path>` SVG
+
+Satu bentuk batu, viewBox `0 0 400 400`, batu mengisi kira-kira 240×240 di tengah.
+
+**Persyaratan yang mengikat, bukan preferensi:**
+- **Hanya kutip tunggal** di seluruh markup SVG. Kutip ganda akan merusak JSON metadata.
+- Tanpa newline dan tanpa komentar — semuanya akan masuk ke string Solidity.
+- Tanpa referensi eksternal: tidak ada `<image>`, `<use href>`, font eksternal, atau URL apa pun. Kontrak harus mandiri.
+- Data path sependek mungkin. Bulatkan koordinat ke bilangan bulat; presisi desimal hanya menambah bytecode tanpa manfaat visual.
+- Target: **di bawah 600 karakter** untuk path dasar.
+
+Bentuk yang disarankan: poligon tak beraturan 7–9 sisi, bukan lingkaran. Batu harus terbaca sebagai batu bahkan pada 64px di dashboard.
+
+**Deliverable:** satu string `d="..."` yang siap ditempel.
+
+---
+
+### A2. Lima fragmen overlay state
+
+Masing-masing adalah potongan SVG yang ditumpuk di atas A1. **Hardcoded, bukan dihasilkan secara parametrik** — generator retakan parametrik adalah item yang paling mungkin memakan 8 jam dari anggaran 3 jam.
+
+| State | Pemicu | Isi fragmen | Target ukuran |
+|---|---|---|---|
+| **Utuh** | Active, elapsed <50% | Tanpa overlay, atau satu highlight halus | <100 char |
+| **Lapuk** | Active, 50–80% | 1–2 polyline retakan rambut, opacity rendah | <200 char |
+| **Retak** | Active, ≥80% | 3–4 polyline retakan tegas, warna lebih gelap | <300 char |
+| **Hancur** | Failed | Batu terbelah: 2–3 kepingan terpisah + celah | <400 char |
+| **Kristal** | Succeeded | Faset bercahaya, warna aksen, mungkin satu kilau | <400 char |
+
+Anggaran total kelimanya: **di bawah 1.500 karakter.** Kalau melebihi, sederhanakan — jangan pindahkan ke kontrak terpisah kecuali `forge build --sizes` benar-benar menuntutnya.
+
+**Uji kelayakan:** letakkan kelima state berdampingan pada 64px. Kalau "lapuk" dan "retak" tidak bisa dibedakan sekilas, progresinya gagal — dan progresi itulah yang dilihat juri di video.
+
+---
+
+### A3. Empat tier badge
+
+Penanda kecil di sudut, dirender ke SVG yang sama.
+
+| Tier | Ambang | Bentuk |
+|---|---|---|
+| None | 0 selesai | Tidak dirender |
+| Perunggu | 1–2 | Satu bentuk kecil, warna hangat gelap |
+| Perak | 3–5 | Bentuk sama, warna terang, mungkin tambah satu elemen |
+| Emas | 6+ | Bentuk sama, warna aksen, elemen paling banyak |
+
+Gunakan **satu geometri** yang hanya berganti warna dan hitungan. Empat bentuk berbeda memboroskan bytecode dan waktu tanpa menambah kejelasan.
+
+**Boleh dipotong:** ganti dengan satu `<text>` "×N selesai". Hemat ~45 menit.
+
+---
+
+### A4. Palet warna
+
+Kunci sekarang, sebelum menulis SVG apa pun — mengganti warna setelah lima fragmen ditulis berarti mengedit lima tempat.
+
+Yang dibutuhkan, sebagai hex:
+- Latar (gelap)
+- Isi batu (netral, mineral)
+- Garis retakan (lebih gelap dari isi)
+- Aksen tunggal (kristal, badge emas, tombol utama)
+- Teks primer dan sekunder
+
+**Satu warna aksen saja.** Juri secara eksplisit menghukum "AI slop" — gradient ungu-ke-biru generik adalah tanda paling khas dari itu. Arah gelap-mineral dengan satu aksen tajam lebih sulit dibuat terlihat seperti template.
+
+---
+
+## Tingkat 2 — Memblokir submission
+
+### A5. README
+
+Wajib memuat:
+- Masalah personal yang diselesaikan dan cara kerjanya
+- **Contract address Monad testnet + tautan explorer**
+- Cara menjalankan lokal
+- **Pernyataan terbuka soal batas kepercayaan:** kunci verifier adalah hot key, jadi ini *trust-minimized*, bukan *trustless*
+- **Limitasi self-dealing** dinyatakan terbuka
+
+Dua poin terakhir bukan formalitas. Juri AI menghukum klaim palsu jauh lebih keras daripada arsitektur yang jujur soal batasnya.
+
+### A6. Demo video (≤3 menit)
+
+Naskah yang sudah terbukti oleh rencana — rekam alur ini, jangan improvisasi:
+
+1. **0:00–0:20** Masalahnya. Repo setengah jadi. Sekali kalimat, tanpa basa-basi.
+2. **0:20–0:50** Commit: repo, target, deadline **5 menit**, stake MON. Tunjukkan batu ter-mint dalam keadaan utuh.
+3. **0:50–1:30** Waktu berjalan. Refresh — batu melapuk, lalu retak. **Tekankan bahwa tidak ada transaksi apa pun yang terjadi**; ini murni fungsi waktu, dirender on-chain.
+4. **1:30–2:20** Dua cabang: push commit → klaim → kristal, saldo naik melebihi setoran (tunjukkan angka yield). Lalu batu lain yang gagal → hancur → dompet pemenang naik.
+5. **2:20–3:00** Contract address di explorer. Sebutkan batas kepercayaan secara terbuka. Selesai.
+
+Rekam **setelah** deploy, dengan deadline 5 menit yang sungguhan. Jangan pakai data palsu — juri secara eksplisit memeriksanya.
+
+### A7. Screenshot untuk submission
+
+2–3 gambar: layar create, dashboard dengan beberapa batu di state berbeda, stone view dengan SVG besar.
+
+---
+
+## Tingkat 3 — Hadiah viral saja ($500 terpisah)
+
+### A8. Post media sosial
+
+Sudut yang paling kuat adalah batu yang retak sendiri. Itu visual, aneh, dan langsung dimengerti tanpa penjelasan.
+
+Yang dibutuhkan: satu GIF atau video pendek berisi progresi utuh→lapuk→retak→hancur, plus tautan app dan repo.
+
+### A9. OG image + favicon
+
+`1200×630` untuk preview tautan, favicon dari batu. Keduanya 15 menit total kalau A1 sudah ada.
+
+---
+
+## Urutan pengerjaan
+
+A4 (palet) → A1 (batu dasar) → A2 (lima state) → A3 (badge) → **kode U7 bisa mulai** → A5 (README, sambil menunggu deploy) → A6/A7 setelah live → A8/A9 kalau masih ada waktu.
+
+**A4 sampai A3 memblokir U7.** Kalau menunda aset sampai kodenya jadi, U7 akan berhenti menunggu — dan U7 duduk di jalur kritis menuju demo video, yang tidak bisa dipotong.
