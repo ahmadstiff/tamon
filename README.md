@@ -34,7 +34,7 @@ The prize pool uses a cumulative reward-per-weight accumulator (MasterChef patte
 
 | | |
 |---|---|
-| **App** | **https://frontend-alpha-lovat-tnfbt64nem.vercel.app** |
+| **App** | **https://tamon-app.vercel.app** |
 | Contract | `0x770d9f4f7D667c6663BC74b7b639b923449DaB6b` |
 | Chain | Monad testnet (10143) |
 | Explorer | https://testnet.monadvision.com/address/0x770d9f4f7D667c6663BC74b7b639b923449DaB6b |
