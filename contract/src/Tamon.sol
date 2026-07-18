@@ -290,7 +290,60 @@ contract Tamon is ERC721, EIP712, ReentrancyGuardTransient, Ownable {
         emit MetadataUpdate(tokenId);
     }
 
+    // -------------------------------------------------------- exits (U6)
+
+    /// @notice Redeem settled shares for native MON, clamped to what the vault can pay now.
+    /// @dev Settlement never calls shMON, so entitlement is already recorded permanently by the
+    ///      time anyone gets here. This function is the only place vault liquidity matters, and
+    ///      it clamps rather than reverts so a user always drains as much as is available and
+    ///      keeps the remainder claimable. shMON's maxRedeem is a GLOBAL vault ceiling shared
+    ///      with every other user on the chain, not a per-owner limit.
+    /// @param sharesRequested Upper bound; pass type(uint256).max to take whatever is available.
+    function withdraw(uint256 sharesRequested)
+        external
+        nonReentrant
+        returns (uint256 shares, uint256 monOut)
+    {
+        uint256 claimable = claimableShares[msg.sender];
+        uint256 cap = SHMON.maxRedeem(address(this));
+
+        shares = sharesRequested < claimable ? sharesRequested : claimable;
+        if (cap < shares) shares = cap;
+        if (shares == 0) revert NothingWithdrawable();
+
+        claimableShares[msg.sender] -= shares; // effects before the external call
+        // receiver is msg.sender, never address(this) — the contract has no receive() and must
+        // never need one. That also blocks stray native donations from skewing the invariant.
+        monOut = SHMON.redeem(shares, msg.sender, address(this));
+
+        emit Withdrawn(msg.sender, shares, monOut);
+    }
+
+    /// @notice Take settled shares as shMON itself, bypassing the vault's redemption capacity.
+    /// @dev The escape hatch behind R7. Anyone can exhaust the global redeem ceiling, which
+    ///      would otherwise turn temporary illiquidity into a permanent lock. Five lines is a
+    ///      cheap price for the guarantee that entitled funds are never trapped.
+    function exitInKind(uint256 sharesRequested) external nonReentrant returns (uint256 shares) {
+        uint256 claimable = claimableShares[msg.sender];
+        shares = sharesRequested < claimable ? sharesRequested : claimable;
+        if (shares == 0) revert NothingWithdrawable();
+
+        claimableShares[msg.sender] -= shares;
+        SHMON.transfer(msg.sender, shares);
+
+        emit ExitedInKind(msg.sender, shares);
+    }
+
     // ------------------------------------------------------------- views
+
+    /// @notice Shares this user could redeem for MON right now — claimable, clamped by the
+    ///         vault's global ceiling. Lower than claimableShares means "wait or exit in kind",
+    ///         not "something failed"; the UI should say so.
+    function withdrawableNow(address owner) external view returns (uint256) {
+        uint256 claimable = claimableShares[owner];
+        uint256 cap = SHMON.maxRedeem(address(this));
+        return cap < claimable ? cap : claimable;
+    }
 
     /// @notice The whole commitment in one call — the auto-generated getter returns a nine-field
     ///         tuple that is miserable to consume from tests or a frontend.

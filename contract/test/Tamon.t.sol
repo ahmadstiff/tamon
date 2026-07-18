@@ -374,6 +374,81 @@ contract TamonTest is Test {
         assertGt(earned, sniped * 1000, "time-weighting failed: sniping is still profitable");
     }
 
+    // -------------------------------------------------------- U6 exits
+
+    function test_withdraw_returnsMonAndClearsClaim() public {
+        uint256 tokenId = _commit(alice, 1 ether, 7 days, 10);
+        _settle(tokenId, alice, 10);
+
+        uint256 balBefore = alice.balance;
+        vm.prank(alice);
+        (uint256 shares, uint256 monOut) = tamon.withdraw(type(uint256).max);
+
+        assertGt(shares, 0, "shares redeemed");
+        assertEq(alice.balance - balBefore, monOut, "native MON arrived");
+        assertEq(tamon.claimableShares(alice), 0, "claim cleared");
+        // Round trip costs ~0.05% in vault spread; principal must come back nearly whole.
+        assertGt(monOut, 0.99 ether, "lost more than 1% round tripping");
+    }
+
+    function test_withdraw_isIncrementalAndDrains() public {
+        uint256 tokenId = _commit(alice, 1 ether, 7 days, 10);
+        _settle(tokenId, alice, 10);
+
+        uint256 claim = tamon.claimableShares(alice);
+
+        vm.prank(alice);
+        tamon.withdraw(claim / 2);
+        assertApproxEqAbs(tamon.claimableShares(alice), claim - claim / 2, 1, "half remains");
+
+        vm.prank(alice);
+        tamon.withdraw(type(uint256).max);
+        assertEq(tamon.claimableShares(alice), 0, "fully drained");
+    }
+
+    function test_withdraw_revertsWithNothingClaimable() public {
+        vm.prank(alice);
+        vm.expectRevert(Tamon.NothingWithdrawable.selector);
+        tamon.withdraw(type(uint256).max);
+    }
+
+    /// @dev The R7 escape hatch: entitled funds leave as the bearing asset even if the vault's
+    ///      global redemption capacity is exhausted by unrelated users.
+    function test_exitInKind_transfersShMonDirectly() public {
+        uint256 tokenId = _commit(alice, 1 ether, 7 days, 10);
+        _settle(tokenId, alice, 10);
+
+        uint256 claim = tamon.claimableShares(alice);
+        vm.prank(alice);
+        uint256 shares = tamon.exitInKind(type(uint256).max);
+
+        assertEq(shares, claim, "took the full claim");
+        assertEq(SHMON.balanceOf(alice), claim, "shMON landed with the user");
+        assertEq(tamon.claimableShares(alice), 0, "claim cleared");
+    }
+
+    function test_exitInKind_revertsWithNothingClaimable() public {
+        vm.prank(alice);
+        vm.expectRevert(Tamon.NothingWithdrawable.selector);
+        tamon.exitInKind(type(uint256).max);
+    }
+
+    function test_withdrawableNow_neverExceedsClaim() public {
+        uint256 tokenId = _commit(alice, 1 ether, 7 days, 10);
+        _settle(tokenId, alice, 10);
+
+        assertLe(tamon.withdrawableNow(alice), tamon.claimableShares(alice), "clamped by claim");
+        assertGt(tamon.withdrawableNow(alice), 0, "vault has headroom at demo scale");
+    }
+
+    /// @dev No receive(): redeem sends native straight to the user, so the contract never needs
+    ///      to accept MON. This also stops stray donations from skewing the solvency invariant.
+    function test_contract_rejectsDirectNativeTransfer() public {
+        vm.prank(alice);
+        (bool ok,) = address(tamon).call{value: 1 ether}("");
+        assertFalse(ok, "contract must not accept native MON");
+    }
+
     // ---------------------------------------------------------- soulbound
 
     function test_transfer_isBlocked() public {
