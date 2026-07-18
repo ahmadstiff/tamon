@@ -17,3 +17,6 @@ dist/
 # Tooling scratch
 .playwright-mcp/
 .DS_Store
+
+# Skills installed via `npx skills add`
+.agents/
