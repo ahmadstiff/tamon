@@ -20,3 +20,7 @@ dist/
 
 # Skills installed via `npx skills add`
 .agents/
+.claude/
+skills-lock.json
+/package.json
+/bun.lock
