@@ -5,6 +5,47 @@ import {Test} from "forge-std/Test.sol";
 import {Tamon} from "../src/Tamon.sol";
 import {IShMON} from "../src/interfaces/IShMON.sol";
 
+/// @notice Test-only base64 decoder. Exists so the tokenURI tests actually parse the metadata
+///         rather than asserting on string length — a corrupt payload is invisible otherwise.
+library Base64Decode {
+    function decode(string memory data) internal pure returns (bytes memory) {
+        bytes memory input = bytes(data);
+        if (input.length == 0) return "";
+        require(input.length % 4 == 0, "bad base64 length");
+
+        uint256 pad;
+        if (input[input.length - 1] == "=") pad++;
+        if (input[input.length - 2] == "=") pad++;
+
+        // divide-before-multiply is exact here: the length is required to be a multiple of 4.
+        // forge-lint: disable-next-line(divide-before-multiply)
+        bytes memory out = new bytes((input.length / 4) * 3 - pad);
+        uint256 o;
+        for (uint256 i; i < input.length; i += 4) {
+            uint256 chunk = (_idx(input[i]) << 18) | (_idx(input[i + 1]) << 12) | (_idx(input[i + 2]) << 6)
+                | _idx(input[i + 3]);
+            // Truncation to one byte IS the base64 decode step, not an accident.
+            // forge-lint: disable-next-line(unsafe-typecast)
+            if (o < out.length) out[o++] = bytes1(uint8(chunk >> 16));
+            // forge-lint: disable-next-line(unsafe-typecast)
+            if (o < out.length) out[o++] = bytes1(uint8(chunk >> 8));
+            // forge-lint: disable-next-line(unsafe-typecast)
+            if (o < out.length) out[o++] = bytes1(uint8(chunk));
+        }
+        return out;
+    }
+
+    function _idx(bytes1 c) private pure returns (uint256) {
+        uint8 v = uint8(c);
+        if (v >= 65 && v <= 90) return v - 65; // A-Z
+        if (v >= 97 && v <= 122) return v - 71; // a-z
+        if (v >= 48 && v <= 57) return v + 4; // 0-9
+        if (v == 43) return 62; // +
+        if (v == 47) return 63; // /
+        return 0; // '=' padding
+    }
+}
+
 /// @notice U3/U4 coverage. Runs against REAL shMON on a Monad testnet fork rather than a mock,
 ///         so the ~11.73 exchange rate is exercised for real and a 1:1 assumption cannot creep
 ///         back in unnoticed.
@@ -447,6 +488,107 @@ contract TamonTest is Test {
         vm.prank(alice);
         (bool ok,) = address(tamon).call{value: 1 ether}("");
         assertFalse(ok, "contract must not accept native MON");
+    }
+
+    // ------------------------------------------------------ U7 tokenURI
+
+    function _decodedJson(uint256 tokenId) internal view returns (string memory) {
+        string memory uri = tamon.tokenURI(tokenId);
+        bytes memory raw = bytes(uri);
+        // strip "data:application/json;base64,"
+        uint256 prefix = 29;
+        bytes memory b64 = new bytes(raw.length - prefix);
+        for (uint256 i; i < b64.length; ++i) {
+            b64[i] = raw[i + prefix];
+        }
+        return string(Base64Decode.decode(string(b64)));
+    }
+
+    function _contains(string memory haystack, string memory needle) internal pure returns (bool) {
+        bytes memory h = bytes(haystack);
+        bytes memory n = bytes(needle);
+        if (n.length == 0 || n.length > h.length) return false;
+        for (uint256 i; i <= h.length - n.length; ++i) {
+            bool hit = true;
+            for (uint256 j; j < n.length; ++j) {
+                if (h[i + j] != n[j]) {
+                    hit = false;
+                    break;
+                }
+            }
+            if (hit) return true;
+        }
+        return false;
+    }
+
+    function test_tokenURI_isBase64JsonWithEmbeddedSvg() public {
+        uint256 tokenId = _commit(alice, 1 ether, 7 days, 10);
+
+        assertTrue(
+            _contains(tamon.tokenURI(tokenId), "data:application/json;base64,"), "json data uri prefix"
+        );
+
+        string memory json = _decodedJson(tokenId);
+        assertTrue(_contains(json, '"name":"Tamon Stone #1"'), "name field");
+        assertTrue(_contains(json, '"image":"data:image/svg+xml;base64,'), "image is base64 svg");
+        assertTrue(_contains(json, "acme/widget"), "repo rendered");
+        assertTrue(_contains(json, "0/10 commit"), "progress rendered");
+    }
+
+    /// @dev The core product claim: the artwork changes with nothing but the passage of time.
+    function test_tokenURI_weathersWithoutAnyTransaction() public {
+        uint256 tokenId = _commit(alice, 1 ether, 90 days, 10);
+
+        assertTrue(_contains(_decodedJson(tokenId), "status: utuh"), "starts intact");
+
+        vm.warp(block.timestamp + 46 days); // >50% elapsed
+        assertTrue(_contains(_decodedJson(tokenId), "status: lapuk"), "weathered at >50%");
+
+        vm.warp(block.timestamp + 28 days); // >80% elapsed
+        assertTrue(_contains(_decodedJson(tokenId), "status: retak"), "cracked at >80%");
+    }
+
+    function test_tokenURI_rendersTerminalStates() public {
+        uint256 win = _commit(alice, 1 ether, 7 days, 10);
+        _settle(win, alice, 10);
+        assertTrue(_contains(_decodedJson(win), "status: kristal"), "succeeded renders crystal");
+
+        uint256 lose = _commit(bob, 1 ether, 7 days, 10);
+        vm.warp(block.timestamp + 7 days + 1);
+        tamon.reap(lose);
+        assertTrue(_contains(_decodedJson(lose), "status: hancur"), "failed renders shattered");
+    }
+
+    /// @dev Past deadline but unreaped is still Active. It must stay at its most cracked
+    ///      rather than pretending time alone shattered it — reap is a transaction.
+    function test_tokenURI_pastDeadlineButUnreapedStaysCracked() public {
+        uint256 tokenId = _commit(alice, 1 ether, 7 days, 10);
+        vm.warp(block.timestamp + 8 days);
+
+        assertTrue(_contains(_decodedJson(tokenId), "status: retak"), "limbo renders cracked");
+    }
+
+    function test_tokenURI_revertsForUnknownToken() public {
+        vm.expectRevert(Tamon.UnknownToken.selector);
+        tamon.tokenURI(999);
+    }
+
+    function test_supportsInterface_advertisesErc4906() public view {
+        assertTrue(tamon.supportsInterface(0x49064906), "ERC-4906");
+        assertTrue(tamon.supportsInterface(0x80ac58cd), "ERC-721");
+    }
+
+    /// @dev Regression for the escaping hazard: the longest legal repo must still yield
+    ///      parseable JSON. Validation at commit is what makes this hold.
+    function test_tokenURI_longestLegalRepoStillProducesValidJson() public {
+        string memory long = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/"
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+        vm.prank(alice);
+        uint256 tokenId = tamon.commit{value: 1 ether}(long, 1, 7 days);
+
+        string memory json = _decodedJson(tokenId);
+        assertTrue(_contains(json, long), "repo survived rendering");
+        assertTrue(_contains(json, '"image":"'), "json still well formed");
     }
 
     // ---------------------------------------------------------- soulbound

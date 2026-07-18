@@ -6,7 +6,10 @@ import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {ReentrancyGuardTransient} from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {IShMON} from "./interfaces/IShMON.sol";
+import {TamonArt} from "./TamonArt.sol";
 
 /// @title Tamon — commitment staking with a decaying stone NFT
 /// @notice Stake MON against a verifiable GitHub target. Hit it and you get principal + staking
@@ -110,6 +113,7 @@ contract Tamon is ERC721, EIP712, ReentrancyGuardTransient, Ownable {
     error TargetNotMet();
     error BadAttestation();
     error NothingWithdrawable();
+    error TransferFailed();
     error SoulboundTransferDisabled();
     error UnknownToken();
 
@@ -329,7 +333,9 @@ contract Tamon is ERC721, EIP712, ReentrancyGuardTransient, Ownable {
         if (shares == 0) revert NothingWithdrawable();
 
         claimableShares[msg.sender] -= shares;
-        SHMON.transfer(msg.sender, shares);
+        // The claim is already debited; a silently-failing transfer would destroy the user's
+        // entitlement outright. Revert instead so the debit unwinds with it.
+        if (!SHMON.transfer(msg.sender, shares)) revert TransferFailed();
 
         emit ExitedInKind(msg.sender, shares);
     }
@@ -366,6 +372,69 @@ contract Tamon is ERC721, EIP712, ReentrancyGuardTransient, Ownable {
     function setVerifier(address newVerifier) external onlyOwner {
         emit VerifierChanged(verifier, newVerifier);
         verifier = newVerifier;
+    }
+
+    // -------------------------------------------------------- tokenURI (U7)
+
+    /// @notice Fully on-chain metadata. The artwork is a pure function of block.timestamp, so
+    ///         the stone weathers with no transaction, no metadata server, and no IPFS — a
+    ///         caller that re-reads this view sees a different image than it did a minute ago.
+    /// @dev The SVG is base64'd before it enters the JSON. Inlining raw markup would let a
+    ///      quote character terminate the JSON string, and since the whole payload is base64'd
+    ///      again the corruption would be invisible on-chain and show up only as a blank tile.
+    ///      The `repo` interpolated below is safe because commit() rejects JSON metacharacters
+    ///      at the source; validation there is what keeps this function free of escaping logic.
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        Commitment storage c = commitments[tokenId];
+        if (c.state == State.None) revert UnknownToken();
+
+        uint8 art = _artState(c);
+        string memory svg = TamonArt.render(art, completedCount[_ownerOf(tokenId)]);
+
+        string memory json = string.concat(
+            '{"name":"Tamon Stone #',
+            Strings.toString(tokenId),
+            '","description":"',
+            c.repo,
+            " - ",
+            Strings.toString(c.achieved),
+            "/",
+            Strings.toString(c.target),
+            " commit - status: ",
+            _stateLabel(art),
+            '","image":"data:image/svg+xml;base64,',
+            Base64.encode(bytes(svg)),
+            '"}'
+        );
+
+        return string.concat("data:application/json;base64,", Base64.encode(bytes(json)));
+    }
+
+    function _artState(Commitment storage c) private view returns (uint8) {
+        if (c.state == State.Succeeded) return TamonArt.KRISTAL;
+        if (c.state == State.Failed) return TamonArt.HANCUR;
+
+        uint256 span = c.deadline - c.start;
+        uint256 elapsed = block.timestamp - c.start;
+        // Past the deadline but not yet reaped: still Active on-chain, and the stone stays at
+        // its most cracked until someone calls reap. The UI names this limbo rather than
+        // pretending time alone shattered it.
+        if (elapsed >= span) return TamonArt.RETAK;
+        return TamonArt.activeState((elapsed * 10_000) / span);
+    }
+
+    function _stateLabel(uint8 art) private pure returns (string memory) {
+        if (art == TamonArt.UTUH) return "utuh";
+        if (art == TamonArt.LAPUK) return "lapuk";
+        if (art == TamonArt.RETAK) return "retak";
+        if (art == TamonArt.HANCUR) return "hancur";
+        return "kristal";
+    }
+
+    /// @dev OZ does not auto-register ERC-4906, so marketplaces would not know this contract
+    ///      emits MetadataUpdate unless we advertise it here.
+    function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
+        return interfaceId == bytes4(0x49064906) || super.supportsInterface(interfaceId);
     }
 
     // ------------------------------------------------------------ soulbound
