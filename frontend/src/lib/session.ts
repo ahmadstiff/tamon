@@ -4,6 +4,7 @@ import {BACKEND_URL} from "./tamon";
 
 const TOKEN_KEY = "tamon.session";
 const NONCE_KEY = "tamon.nonce";
+const RETURN_KEY = "tamon.return";
 
 export interface Session {
   token: string;
@@ -37,6 +38,9 @@ export function clearSession() {
 export function beginGithubLink(clientId: string) {
   const nonce = crypto.randomUUID();
   localStorage.setItem(NONCE_KEY, nonce);
+  // Linking is something you do mid-claim, so the round trip has to end where it started.
+  // Dropping the user on the home page means finding their stone again by hand.
+  localStorage.setItem(RETURN_KEY, window.location.pathname);
 
   const url = new URL("https://github.com/login/oauth/authorize");
   url.searchParams.set("client_id", clientId);
@@ -86,6 +90,15 @@ export async function exchangeForSession(
 
 export function readNonce(): string | null {
   return typeof window === "undefined" ? null : localStorage.getItem(NONCE_KEY);
+}
+
+/// Where the user was when they started linking. Falls back to the dashboard.
+export function readReturnPath(): string {
+  if (typeof window === "undefined") return "/app";
+  const p = localStorage.getItem(RETURN_KEY);
+  localStorage.removeItem(RETURN_KEY);
+  // Only same-origin paths — never trust this to redirect off-site.
+  return p && p.startsWith("/") && !p.startsWith("//") ? p : "/app";
 }
 
 /// Decode the login out of the link token so the binding message can be built before the

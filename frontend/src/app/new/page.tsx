@@ -4,7 +4,7 @@ import {useRouter} from "next/navigation";
 import {useEffect, useState} from "react";
 import {parseEther} from "viem";
 import {useAccount, usePublicClient, useWaitForTransactionReceipt, useWriteContract} from "wagmi";
-import {ConnectPrompt, ErrorNote, Shell} from "@/components/Shell";
+import {ConnectPrompt, ErrorNote, Shell, useWrongChain} from "@/components/Shell";
 import {TAMON_ABI, TAMON_ADDRESS, validateRepo} from "@/lib/tamon";
 
 /// Durations the product actually needs. Minutes exist so a three-minute demo can show a whole
@@ -20,6 +20,7 @@ const DURATIONS = [
 export default function NewCommitment() {
   const router = useRouter();
   const {isConnected} = useAccount();
+  const wrongChain = useWrongChain();
   const publicClient = usePublicClient();
 
   const [repo, setRepo] = useState("");
@@ -33,7 +34,7 @@ export default function NewCommitment() {
   const receipt = useWaitForTransactionReceipt({hash});
 
   useEffect(() => {
-    if (receipt.isSuccess) router.push("/");
+    if (receipt.isSuccess) router.push("/app");
   }, [receipt.isSuccess, router]);
 
   async function submit(e: React.FormEvent) {
@@ -100,7 +101,7 @@ export default function NewCommitment() {
     );
   }
 
-  const busy = isPending || receipt.isLoading;
+  const busy = isPending || receipt.isLoading || wrongChain;
 
   return (
     <Shell>
@@ -192,7 +193,13 @@ export default function NewCommitment() {
             disabled={busy}
             className="data bg-accent text-void px-5 py-3 text-[11px] font-medium tracking-[0.14em] uppercase disabled:opacity-50"
           >
-            {isPending ? "Signing…" : receipt.isLoading ? "Confirming…" : "Stake and commit"}
+            {wrongChain
+              ? "Switch to Monad testnet first"
+              : isPending
+                ? "Signing…"
+                : receipt.isLoading
+                  ? "Confirming…"
+                  : "Stake and commit"}
           </button>
 
           <p className="text-xs text-muted">

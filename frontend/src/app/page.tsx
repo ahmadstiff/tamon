@@ -1,92 +1,199 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import {useAccount} from "wagmi";
-import {ConnectPrompt, EmptyStones, Shell, StoneSkeleton} from "@/components/Shell";
+import {useReadContract} from "wagmi";
+import {LandingNav} from "@/components/LandingNav";
+import SpecularButton from "@/components/SpecularButton";
 import {Stone} from "@/components/Stone";
-import {useNow, useOwnedStones, useStone} from "@/hooks/useStone";
-import {State, timeLeft} from "@/lib/tamon";
+import {useNow, useStone} from "@/hooks/useStone";
+import {EXPLORER} from "@/lib/chain";
+import {State, TAMON_ABI, TAMON_ADDRESS} from "@/lib/tamon";
 
-/// One specimen on the shelf. The card is the primary surface, not a teaser for a detail page —
-/// two fit side by side at 1280px, which is what lets a demo hold the failing and the
-/// succeeding stone on screen together.
-function SpecimenCard({tokenId}: {tokenId: bigint}) {
-  const {commitment, svg, isPending} = useStone(tokenId);
+// WebGL, and useless to the server. Loading it client-only keeps it out of the app routes
+// entirely — the dashboard never pays for the landing page's atmosphere.
+const Galaxy = dynamic(() => import("@/components/Galaxy"), {ssr: false});
+
+/// The hero is a real stone, read live from the contract, weathering while you look at it.
+///
+/// That is the product's whole argument made self-evident: consequence you can watch accumulate
+/// before the deadline. A rendered mockup would say the same thing and prove nothing.
+function LiveStone() {
   const now = useNow();
 
-  if (isPending || !commitment) return <StoneSkeleton />;
+  // Walk back from the newest token to find one that is still Active.
+  //
+  // Pinning a fixed id would eventually leave the hero showing a long-dead stone frozen at
+  // 100% cracked — a page claiming "weathering right now" that visibly isn't. Three lookups
+  // is a cheap price for the claim staying true.
+  const nextId = useReadContract({
+    address: TAMON_ADDRESS,
+    abi: TAMON_ABI,
+    functionName: "nextId",
+    query: {enabled: Boolean(TAMON_ADDRESS), refetchInterval: 15000},
+  });
 
-  const active = commitment.state === State.Active;
-  const overdue = active && now >= Number(commitment.deadline);
+  const latest = Number((nextId.data as bigint | undefined) ?? 1n) - 1;
+  const candidates = [latest, latest - 1, latest - 2].filter((n) => n >= 1);
 
-  return (
-    <Link href={`/stone/${tokenId}`} className="group flex flex-col gap-4">
-      <Stone svg={svg} commitment={commitment} now={now} size={240} />
+  const a = useStone(candidates[0] !== undefined ? BigInt(candidates[0]) : undefined);
+  const b = useStone(candidates[1] !== undefined ? BigInt(candidates[1]) : undefined);
+  const c = useStone(candidates[2] !== undefined ? BigInt(candidates[2]) : undefined);
 
-      <div className="flex flex-col gap-2" style={{width: 240}}>
-        <span className="label">Specimen {String(tokenId).padStart(3, "0")}</span>
-        <p className="font-display font-semibold leading-tight break-all group-hover:text-accent">
-          {commitment.repo}
-        </p>
-        <div className="flex items-baseline justify-between">
-          <span className="data text-xs text-muted">
-            {commitment.achieved}/{commitment.target} commits
-          </span>
-          <span className="data text-xs">
-            {active
-              ? overdue
-                ? "overdue"
-                : timeLeft(commitment.deadline, now)
-              : commitment.state === State.Succeeded
-                ? "settled"
-                : "forfeited"}
-          </span>
-        </div>
-      </div>
-    </Link>
-  );
+  const picked =
+    [a, b, c].find((s) => s.commitment?.state === State.Active) ??
+    [a, b, c].find((s) => s.commitment) ??
+    null;
+
+  if (!picked?.commitment) {
+    return <div className="border-crack h-[320px] w-[320px] border opacity-30" />;
+  }
+  return <Stone svg={picked.svg} commitment={picked.commitment} now={now} size={320} />;
 }
 
-export default function Dashboard() {
-  const {address, isConnected} = useAccount();
-  const {tokenIds, isPending} = useOwnedStones(address);
-
+export default function Landing() {
   return (
-    <Shell>
-      {!isConnected ? (
-        <ConnectPrompt />
-      ) : (
-        <div className="flex flex-col gap-10">
-          <div className="flex flex-wrap items-baseline justify-between gap-4">
-            <div className="flex flex-col gap-1">
-              <span className="label">Collection</span>
-              <h1 className="font-display text-2xl font-extrabold">Your specimens</h1>
+    <div className="relative min-h-dvh overflow-hidden">
+      {/* Desaturated to zero and kept dim. At these settings it reads as mineral dust rather
+          than a starfield, which is what lets it sit under a geological subject without
+          turning the page into a space theme — and it keeps the single-accent rule intact. */}
+      <div className="pointer-events-none absolute inset-0 opacity-40">
+        <Galaxy
+          density={0.6}
+          glowIntensity={0.15}
+          saturation={0}
+          hueShift={0}
+          twinkleIntensity={0.2}
+          rotationSpeed={0.02}
+          starSpeed={0.15}
+          mouseInteraction={false}
+          transparent
+        />
+      </div>
+
+      <div className="relative z-10">
+        <div className="px-6 pt-6">
+          <LandingNav />
+        </div>
+
+        <section className="mx-auto flex max-w-5xl flex-col items-start gap-12 px-6 pt-24 pb-20 md:flex-row md:items-center md:gap-20">
+          <div className="flex max-w-xl flex-col gap-7">
+            <span className="label">Commitment staking on Monad</span>
+
+            <h1 className="font-display text-4xl leading-[1.05] font-extrabold tracking-tight md:text-6xl">
+              Your repo doesn&rsquo;t care that you quit.
+              <br />
+              <span className="text-accent">This does.</span>
+            </h1>
+
+            <p className="text-muted text-lg leading-relaxed">
+              Stake MON against a commit target. Hit it and you get your stake back with staking
+              yield, plus a share of everyone who missed. Miss it and your stake funds the people
+              who didn&rsquo;t.
+            </p>
+
+            <div className="flex flex-wrap items-center gap-5">
+              <Link href="/app">
+                <SpecularButton>Open the app</SpecularButton>
+              </Link>
+              <a
+                href={`${EXPLORER}/address/${TAMON_ADDRESS}`}
+                className="data text-muted hover:text-text text-[11px] tracking-[0.14em] uppercase"
+              >
+                View contract
+              </a>
             </div>
-            <Link
-              href="/new"
-              className="data bg-accent text-void px-4 py-2 text-[11px] font-medium tracking-[0.14em] uppercase"
-            >
-              New commitment
-            </Link>
           </div>
 
-          {isPending ? (
-            <div className="flex flex-wrap gap-10">
-              <StoneSkeleton />
-              <StoneSkeleton />
+          <div id="stone" className="flex w-full max-w-[320px] shrink-0 flex-col gap-4">
+            <LiveStone />
+            <p className="text-muted text-xs">
+              A real commitment on-chain, weathering right now. Nothing is animating a mockup —
+              the artwork is a function of <span className="data text-text">block.timestamp</span>,
+              rendered by the contract itself.
+            </p>
+          </div>
+        </section>
+
+        {/* Four numbered steps, because this genuinely is a sequence and the order carries
+            information the reader needs — particularly step 2, which is the one that trips
+            people up. */}
+        <section id="how" className="border-crack border-t">
+          <div className="mx-auto max-w-5xl px-6 py-16">
+            <div className="mb-10 flex flex-col gap-2">
+              <span className="label">How to use it</span>
+              <h2 className="font-display text-2xl font-extrabold">Four steps, about a minute.</h2>
             </div>
-          ) : tokenIds.length === 0 ? (
-            <EmptyStones />
-          ) : (
-            <div className="flex flex-wrap gap-x-10 gap-y-12">
-              {/* Newest first — the stone you're currently sweating over belongs at the top. */}
-              {[...tokenIds].reverse().map((id) => (
-                <SpecimenCard key={String(id)} tokenId={id} />
+
+            <ol className="grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                {
+                  n: "01",
+                  k: "Connect and pick a repo",
+                  v: "Any public repo you own. Commits are counted against the GitHub account you link, so it has to be yours.",
+                },
+                {
+                  n: "02",
+                  k: "Set the target, then commit",
+                  v: "Choose how many commits and by when, and stake at least 0.1 MON. Only work pushed after this moment counts — the clock starts here.",
+                },
+                {
+                  n: "03",
+                  k: "Do the work",
+                  v: "Push real commits. Empty ones are ignored. Meanwhile the stone weathers: intact, worn, cracked.",
+                },
+                {
+                  n: "04",
+                  k: "Claim before the deadline",
+                  v: "Link GitHub once, then claim. We read your commits, sign the result, and the contract pays out. Miss the deadline and your stake goes to everyone who didn't.",
+                },
+              ].map((s) => (
+                <li key={s.n} className="flex flex-col gap-3">
+                  <span className="data text-accent text-[11px] tracking-[0.14em]">{s.n}</span>
+                  <span className="font-display border-crack border-t pt-3 font-semibold">
+                    {s.k}
+                  </span>
+                  <p className="text-muted text-sm leading-relaxed">{s.v}</p>
+                </li>
+              ))}
+            </ol>
+
+            <div className="border-crack mt-12 flex flex-col gap-6 border-t pt-10 md:flex-row md:gap-10">
+              {[
+                {
+                  k: "Where your stake sits",
+                  v: "In shMON liquid staking, earning for the whole period rather than idling in escrow. You get the yield too.",
+                },
+                {
+                  k: "What you need",
+                  v: "A wallet on Monad testnet and some MON from the faucet. The app will offer to switch networks for you.",
+                },
+                {
+                  k: "What we can and can't see",
+                  v: "Only public commits on the repo you named, by the account you linked. We never get write access.",
+                },
+              ].map((f) => (
+                <div key={f.k} className="flex flex-1 flex-col gap-2">
+                  <span className="label">{f.k}</span>
+                  <p className="text-muted text-sm leading-relaxed">{f.v}</p>
+                </div>
               ))}
             </div>
-          )}
-        </div>
-      )}
-    </Shell>
+          </div>
+        </section>
+
+        <footer className="border-crack border-t">
+          <div className="text-muted mx-auto flex max-w-5xl flex-wrap justify-between gap-4 px-6 py-6 text-[13px]">
+            <p>
+              Completion is attested by Tamon&rsquo;s verifier key.{" "}
+              <span className="text-text">Trust-minimised, not trustless.</span>
+            </p>
+            <a href="https://github.com/ahmadstiff/tamon" className="hover:text-text">
+              Source
+            </a>
+          </div>
+        </footer>
+      </div>
+    </div>
   );
 }
