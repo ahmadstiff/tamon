@@ -18,9 +18,12 @@ export function LandingNav() {
         {label: "The stone", href: "#stone"},
         {label: "Open app", href: "/app"},
       ]}
+      // The two text colours are for opposite states and are easy to invert. At rest the label
+      // sits on a dark pill, so it must be light. On hover a baseColor-filled circle expands to
+      // cover the pill, so the label must flip dark or it disappears into the fill.
       baseColor="#F2F0EC"
       pillColor="#0E1014"
-      pillTextColor="#0E1014"
+      pillTextColor="#F2F0EC"
       hoveredPillTextColor="#0E1014"
       className="tamon-nav"
     />
