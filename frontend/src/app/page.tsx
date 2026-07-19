@@ -5,6 +5,7 @@ import Link from "next/link";
 import {useReadContract} from "wagmi";
 import {LandingNav} from "@/components/LandingNav";
 import {ProtocolFlow} from "@/components/ProtocolFlow";
+import {SmoothAnchors} from "@/components/SmoothAnchors";
 import {StoneStates} from "@/components/StoneStates";
 import SpecularButton from "@/components/SpecularButton";
 import {Stone} from "@/components/Stone";
@@ -99,6 +100,8 @@ export default function Landing() {
           transparent
         />
       </div>
+
+      <SmoothAnchors />
 
       <div className="relative z-10">
         <div className="px-6 pt-6">
