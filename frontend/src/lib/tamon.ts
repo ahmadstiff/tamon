@@ -1,9 +1,9 @@
-import type {Address} from "viem";
+import type {Abi, Address} from "viem";
 import abi from "./tamon-abi.json";
 
 /// Generated from contract/out/Tamon.sol/Tamon.json — never hand-written, so a contract change
 /// followed by a rebuild cannot silently drift from what the UI thinks it is calling.
-export const TAMON_ABI = abi;
+export const TAMON_ABI = abi as Abi;
 
 /// From env, never a hard-coded constant. A redeploy is then a config change rather than a
 /// code change — which matters because redeploying invalidates every attestation the backend

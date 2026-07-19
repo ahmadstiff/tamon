@@ -2,16 +2,16 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import {useReadContract} from "wagmi";
 import {LandingNav} from "@/components/LandingNav";
 import {ProtocolFlow} from "@/components/ProtocolFlow";
 import {SmoothAnchors} from "@/components/SmoothAnchors";
 import {StoneStates} from "@/components/StoneStates";
 import SpecularButton from "@/components/SpecularButton";
 import {Stone} from "@/components/Stone";
-import {useNow, useStone} from "@/hooks/useStone";
+import {useHeroStone} from "@/hooks/useHeroStone";
+import {useNow} from "@/hooks/useStone";
 import {EXPLORER} from "@/lib/chain";
-import {State, TAMON_ABI, TAMON_ADDRESS} from "@/lib/tamon";
+import {TAMON_ADDRESS} from "@/lib/tamon";
 
 // WebGL, and useless to the server. Loading it client-only keeps it out of the app routes
 // entirely — the dashboard never pays for the landing page's atmosphere.
@@ -23,43 +23,15 @@ const Galaxy = dynamic(() => import("@/components/Galaxy"), {ssr: false});
 /// before the deadline. A rendered mockup would say the same thing and prove nothing.
 function LiveStone() {
   const now = useNow();
+  const {commitment, svg, live} = useHeroStone();
 
-  const nextId = useReadContract({
-    address: TAMON_ADDRESS,
-    abi: TAMON_ABI,
-    functionName: "nextId",
-    query: {enabled: Boolean(TAMON_ADDRESS), refetchInterval: 15000},
-  });
-
-  // Search the last eight tokens for one that is still running.
-  //
-  // Three was not enough: the newest tokens are the ones most likely to have already settled or
-  // expired, so a short window kept landing on a terminal stone — the hero showed HANCUR at
-  // 100% under a caption promising "weathering right now", which contradicts itself.
-  const latest = Number((nextId.data as bigint | undefined) ?? 1n) - 1;
-  const ids = Array.from({length: 8}, (_, i) => latest - i).filter((n) => n >= 1);
-
-  const stones = [
-    useStone(ids[0] !== undefined ? BigInt(ids[0]) : undefined),
-    useStone(ids[1] !== undefined ? BigInt(ids[1]) : undefined),
-    useStone(ids[2] !== undefined ? BigInt(ids[2]) : undefined),
-    useStone(ids[3] !== undefined ? BigInt(ids[3]) : undefined),
-    useStone(ids[4] !== undefined ? BigInt(ids[4]) : undefined),
-    useStone(ids[5] !== undefined ? BigInt(ids[5]) : undefined),
-    useStone(ids[6] !== undefined ? BigInt(ids[6]) : undefined),
-    useStone(ids[7] !== undefined ? BigInt(ids[7]) : undefined),
-  ];
-
-  const live = stones.find((s) => s.commitment?.state === State.Active);
-  const picked = live ?? stones.find((s) => s.commitment);
-
-  if (!picked?.commitment) {
+  if (!commitment) {
     return <div className="border-crack aspect-square w-full max-w-[320px] border opacity-30" />;
   }
 
   return (
     <>
-      <Stone svg={picked.svg} commitment={picked.commitment} now={now} size={320} />
+      <Stone svg={svg} commitment={commitment} now={now} size={320} />
       {/* The caption has to match what is actually on screen. Claiming live weathering over a
           settled stone is the kind of small dishonesty that costs more than it buys. */}
       <p className="text-muted text-xs">
