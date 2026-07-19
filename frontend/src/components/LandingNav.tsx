@@ -15,7 +15,7 @@ export function LandingNav() {
       logoAlt="Tamon"
       items={[
         {label: "How it works", href: "#how"},
-        {label: "The stone", href: "#stone"},
+        {label: "The stone", href: "#stone-states"},
         {label: "shMON", href: "#protocol"},
         {label: "Open app", href: "/app"},
       ]}

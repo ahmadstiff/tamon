@@ -5,6 +5,7 @@ import Link from "next/link";
 import {useReadContract} from "wagmi";
 import {LandingNav} from "@/components/LandingNav";
 import {ProtocolFlow} from "@/components/ProtocolFlow";
+import {StoneStates} from "@/components/StoneStates";
 import SpecularButton from "@/components/SpecularButton";
 import {Stone} from "@/components/Stone";
 import {useNow, useStone} from "@/hooks/useStone";
@@ -22,11 +23,6 @@ const Galaxy = dynamic(() => import("@/components/Galaxy"), {ssr: false});
 function LiveStone() {
   const now = useNow();
 
-  // Walk back from the newest token to find one that is still Active.
-  //
-  // Pinning a fixed id would eventually leave the hero showing a long-dead stone frozen at
-  // 100% cracked — a page claiming "weathering right now" that visibly isn't. Three lookups
-  // is a cheap price for the claim staying true.
   const nextId = useReadContract({
     address: TAMON_ADDRESS,
     abi: TAMON_ABI,
@@ -34,22 +30,54 @@ function LiveStone() {
     query: {enabled: Boolean(TAMON_ADDRESS), refetchInterval: 15000},
   });
 
+  // Search the last eight tokens for one that is still running.
+  //
+  // Three was not enough: the newest tokens are the ones most likely to have already settled or
+  // expired, so a short window kept landing on a terminal stone — the hero showed HANCUR at
+  // 100% under a caption promising "weathering right now", which contradicts itself.
   const latest = Number((nextId.data as bigint | undefined) ?? 1n) - 1;
-  const candidates = [latest, latest - 1, latest - 2].filter((n) => n >= 1);
+  const ids = Array.from({length: 8}, (_, i) => latest - i).filter((n) => n >= 1);
 
-  const a = useStone(candidates[0] !== undefined ? BigInt(candidates[0]) : undefined);
-  const b = useStone(candidates[1] !== undefined ? BigInt(candidates[1]) : undefined);
-  const c = useStone(candidates[2] !== undefined ? BigInt(candidates[2]) : undefined);
+  const stones = [
+    useStone(ids[0] !== undefined ? BigInt(ids[0]) : undefined),
+    useStone(ids[1] !== undefined ? BigInt(ids[1]) : undefined),
+    useStone(ids[2] !== undefined ? BigInt(ids[2]) : undefined),
+    useStone(ids[3] !== undefined ? BigInt(ids[3]) : undefined),
+    useStone(ids[4] !== undefined ? BigInt(ids[4]) : undefined),
+    useStone(ids[5] !== undefined ? BigInt(ids[5]) : undefined),
+    useStone(ids[6] !== undefined ? BigInt(ids[6]) : undefined),
+    useStone(ids[7] !== undefined ? BigInt(ids[7]) : undefined),
+  ];
 
-  const picked =
-    [a, b, c].find((s) => s.commitment?.state === State.Active) ??
-    [a, b, c].find((s) => s.commitment) ??
-    null;
+  const live = stones.find((s) => s.commitment?.state === State.Active);
+  const picked = live ?? stones.find((s) => s.commitment);
 
   if (!picked?.commitment) {
-    return <div className="border-crack h-[320px] w-[320px] border opacity-30" />;
+    return <div className="border-crack aspect-square w-full max-w-[320px] border opacity-30" />;
   }
-  return <Stone svg={picked.svg} commitment={picked.commitment} now={now} size={320} />;
+
+  return (
+    <>
+      <Stone svg={picked.svg} commitment={picked.commitment} now={now} size={320} />
+      {/* The caption has to match what is actually on screen. Claiming live weathering over a
+          settled stone is the kind of small dishonesty that costs more than it buys. */}
+      <p className="text-muted text-xs">
+        {live ? (
+          <>
+            A real commitment on-chain, weathering right now. Nothing is animating a mockup — the
+            artwork is a function of <span className="data text-text">block.timestamp</span>,
+            rendered by the contract itself.
+          </>
+        ) : (
+          <>
+            A real commitment on-chain, already settled. The artwork is a function of{" "}
+            <span className="data text-text">block.timestamp</span>, rendered by the contract
+            itself — nothing is animating a mockup.
+          </>
+        )}
+      </p>
+    </>
+  );
 }
 
 export default function Landing() {
@@ -108,11 +136,6 @@ export default function Landing() {
 
           <div id="stone" className="flex w-full max-w-[320px] shrink-0 flex-col gap-4">
             <LiveStone />
-            <p className="text-muted text-xs">
-              A real commitment on-chain, weathering right now. Nothing is animating a mockup —
-              the artwork is a function of <span className="data text-text">block.timestamp</span>,
-              rendered by the contract itself.
-            </p>
           </div>
         </section>
 
@@ -182,6 +205,8 @@ export default function Landing() {
             </div>
           </div>
         </section>
+
+        <StoneStates />
 
         <ProtocolFlow />
 
