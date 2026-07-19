@@ -83,11 +83,15 @@ function LiveStone() {
 
 export default function Landing() {
   return (
-    <div className="relative min-h-dvh overflow-hidden">
+    {/* No overflow-hidden here. It breaks position: sticky — a sticky child anchors to the
+        overflow box rather than the viewport, so the nav would scroll away regardless of what
+        it's told. It was also what silently cropped the stone on narrow screens. The Galaxy is
+        absolutely positioned within this relative parent, so it stays bounded without it. */}
+    <div className="relative min-h-dvh">
       {/* Desaturated to zero and kept dim. At these settings it reads as mineral dust rather
           than a starfield, which is what lets it sit under a geological subject without
           turning the page into a space theme — and it keeps the single-accent rule intact. */}
-      <div className="pointer-events-none absolute inset-0 opacity-40">
+      <div className="pointer-events-none fixed inset-0 opacity-40">
         <Galaxy
           density={0.6}
           glowIntensity={0.15}
@@ -104,7 +108,10 @@ export default function Landing() {
       <SmoothAnchors />
 
       <div className="relative z-10">
-        <div className="px-6 pt-6">
+        {/* Sticky rather than fixed, so it occupies its own space at the top and nothing has to
+            be padded to compensate. The blur is what keeps the pill legible once section text
+            starts passing underneath it. */}
+        <div className="sticky top-0 z-50 px-6 pt-6 pb-4 backdrop-blur-md">
           <LandingNav />
         </div>
 
