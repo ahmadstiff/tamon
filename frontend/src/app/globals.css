@@ -63,6 +63,12 @@ html {
   color-scheme: dark;
 }
 
+/* Anchored sections would otherwise land flush against the viewport top, tucked under the
+ * floating nav. Applies to direct hash loads and back/forward too, not just clicks. */
+[id] {
+  scroll-margin-top: 6rem;
+}
+
 body {
   background: var(--color-void);
   color: var(--color-text);

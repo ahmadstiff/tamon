@@ -2,14 +2,16 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import {useReadContract} from "wagmi";
 import {LandingNav} from "@/components/LandingNav";
 import {ProtocolFlow} from "@/components/ProtocolFlow";
+import {SmoothAnchors} from "@/components/SmoothAnchors";
+import {StoneStates} from "@/components/StoneStates";
 import SpecularButton from "@/components/SpecularButton";
 import {Stone} from "@/components/Stone";
-import {useNow, useStone} from "@/hooks/useStone";
+import {useHeroStone} from "@/hooks/useHeroStone";
+import {useNow} from "@/hooks/useStone";
 import {EXPLORER} from "@/lib/chain";
-import {State, TAMON_ABI, TAMON_ADDRESS} from "@/lib/tamon";
+import {TAMON_ADDRESS} from "@/lib/tamon";
 
 // WebGL, and useless to the server. Loading it client-only keeps it out of the app routes
 // entirely — the dashboard never pays for the landing page's atmosphere.
@@ -21,44 +23,47 @@ const Galaxy = dynamic(() => import("@/components/Galaxy"), {ssr: false});
 /// before the deadline. A rendered mockup would say the same thing and prove nothing.
 function LiveStone() {
   const now = useNow();
+  const {commitment, svg, live} = useHeroStone();
 
-  // Walk back from the newest token to find one that is still Active.
-  //
-  // Pinning a fixed id would eventually leave the hero showing a long-dead stone frozen at
-  // 100% cracked — a page claiming "weathering right now" that visibly isn't. Three lookups
-  // is a cheap price for the claim staying true.
-  const nextId = useReadContract({
-    address: TAMON_ADDRESS,
-    abi: TAMON_ABI,
-    functionName: "nextId",
-    query: {enabled: Boolean(TAMON_ADDRESS), refetchInterval: 15000},
-  });
-
-  const latest = Number((nextId.data as bigint | undefined) ?? 1n) - 1;
-  const candidates = [latest, latest - 1, latest - 2].filter((n) => n >= 1);
-
-  const a = useStone(candidates[0] !== undefined ? BigInt(candidates[0]) : undefined);
-  const b = useStone(candidates[1] !== undefined ? BigInt(candidates[1]) : undefined);
-  const c = useStone(candidates[2] !== undefined ? BigInt(candidates[2]) : undefined);
-
-  const picked =
-    [a, b, c].find((s) => s.commitment?.state === State.Active) ??
-    [a, b, c].find((s) => s.commitment) ??
-    null;
-
-  if (!picked?.commitment) {
-    return <div className="border-crack h-[320px] w-[320px] border opacity-30" />;
+  if (!commitment) {
+    return <div className="border-crack aspect-square w-full max-w-[320px] border opacity-30" />;
   }
-  return <Stone svg={picked.svg} commitment={picked.commitment} now={now} size={320} />;
+
+  return (
+    <>
+      <Stone svg={svg} commitment={commitment} now={now} size={320} />
+      {/* The caption has to match what is actually on screen. Claiming live weathering over a
+          settled stone is the kind of small dishonesty that costs more than it buys. */}
+      <p className="text-muted text-xs">
+        {live ? (
+          <>
+            A real commitment on-chain, weathering right now. Nothing is animating a mockup — the
+            artwork is a function of <span className="data text-text">block.timestamp</span>,
+            rendered by the contract itself.
+          </>
+        ) : (
+          <>
+            A real commitment on-chain, already settled. The artwork is a function of{" "}
+            <span className="data text-text">block.timestamp</span>, rendered by the contract
+            itself — nothing is animating a mockup.
+          </>
+        )}
+      </p>
+    </>
+  );
 }
 
 export default function Landing() {
+  // No overflow-hidden on the wrapper. It breaks position: sticky — a sticky child anchors to
+  // the overflow box rather than the viewport, so the nav would scroll away regardless of what
+  // it's told. It was also what silently cropped the stone on narrow screens. The Galaxy is
+  // absolutely positioned within this relative parent, so it stays bounded without it.
   return (
-    <div className="relative min-h-dvh overflow-hidden">
+    <div className="relative min-h-dvh">
       {/* Desaturated to zero and kept dim. At these settings it reads as mineral dust rather
           than a starfield, which is what lets it sit under a geological subject without
           turning the page into a space theme — and it keeps the single-accent rule intact. */}
-      <div className="pointer-events-none absolute inset-0 opacity-40">
+      <div className="pointer-events-none fixed inset-0 opacity-40">
         <Galaxy
           density={0.6}
           glowIntensity={0.15}
@@ -72,8 +77,13 @@ export default function Landing() {
         />
       </div>
 
+      <SmoothAnchors />
+
       <div className="relative z-10">
-        <div className="px-6 pt-6">
+        {/* Sticky rather than fixed, so it occupies its own space at the top and nothing has to
+            be padded to compensate. The blur is what keeps the pill legible once section text
+            starts passing underneath it. */}
+        <div className="sticky top-0 z-50 px-6 pt-6 pb-4 backdrop-blur-md">
           <LandingNav />
         </div>
 
@@ -108,11 +118,6 @@ export default function Landing() {
 
           <div id="stone" className="flex w-full max-w-[320px] shrink-0 flex-col gap-4">
             <LiveStone />
-            <p className="text-muted text-xs">
-              A real commitment on-chain, weathering right now. Nothing is animating a mockup —
-              the artwork is a function of <span className="data text-text">block.timestamp</span>,
-              rendered by the contract itself.
-            </p>
           </div>
         </section>
 
@@ -182,6 +187,8 @@ export default function Landing() {
             </div>
           </div>
         </section>
+
+        <StoneStates />
 
         <ProtocolFlow />
 
