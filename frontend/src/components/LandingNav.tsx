@@ -16,6 +16,7 @@ export function LandingNav() {
       items={[
         {label: "How it works", href: "#how"},
         {label: "The stone", href: "#stone"},
+        {label: "shMON", href: "#protocol"},
         {label: "Open app", href: "/app"},
       ]}
       // The two text colours are for opposite states and are easy to invert. At rest the label

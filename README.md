@@ -44,6 +44,48 @@ The prize pool uses a cumulative reward-per-weight accumulator (MasterChef patte
 
 54 contract tests passing, 0 lint warnings, 17,170 bytes of runtime bytecode (Monad's limit is 128KB — the familiar 24KB ceiling does not apply here).
 
+## Monad ecosystem integration
+
+The stake is not held in escrow. Every commitment routes native MON through **shMON**, FastLane's
+liquid staking vault on Monad, and the yield returns to the user with their principal.
+
+| | |
+|---|---|
+| Protocol | [shMonad (FastLane)](https://testnet.monadvision.com/address/0x282BdDFF5e58793AcAb65438b257Dbd15A8745C9) |
+| Address | `0x282BdDFF5e58793AcAb65438b257Dbd15A8745C9` |
+| Standard | ERC-7535 — a native-asset ERC-4626, so `asset()` returns the `0xEeee…EEeE` sentinel and `deposit` is payable |
+| Calls used | `deposit`, `redeem`, `maxRedeem`, `transfer` |
+
+```
+commit()  ──▶ shMON.deposit{value: msg.value}  ──▶ contract holds SHARES
+                                                        │
+                          rate rises every block ────────┤  yield accrues to the holder,
+                                                        │  no further transaction
+withdraw() ◀── shMON.redeem (clamped by maxRedeem) ◀────┘
+exitInKind() ◀── shMON.transfer  (escape hatch)
+```
+
+**Why this vault and not another.** Aave, Euler, Curvance and Pendle are all live on Monad
+testnet, and aPriori, Magma and Kintsu all offer liquid staking. shMON was chosen for one
+specific reason: **it is the only one with synchronous redemption.** The others queue
+withdrawals behind an unbonding period, which breaks a product whose entire promise is
+returning funds on a deadline. ERC-7535 also means native MON deposits directly — no wrapping
+step, no approval, one transaction.
+
+**What this integration is not.** There is no lending, no DEX, no oracle and no indexer. The
+product needs exactly one thing from DeFi — staked capital that keeps working — and shMON
+provides it. Stacking more protocols would add failure surface without adding capability.
+
+Three consequences of the integration are load-bearing enough to be worth naming:
+
+- **The rate is ~11.7 MON per shMON and rises every block.** It is not 1:1. Everything in the
+  contract is denominated in shares for this reason.
+- **`maxRedeem` is a global vault ceiling**, shared with every other shMON user — not a
+  per-user limit. `withdraw` clamps to it rather than reverting, and `exitInKind` exists so an
+  exhausted ceiling can never trap funds.
+- **Tests fork real shMON** rather than mocking it, so the moving rate is exercised for real and
+  a 1:1 assumption cannot creep back in.
+
 ## Running locally
 
 ```bash

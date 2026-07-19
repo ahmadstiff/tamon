@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import {useReadContract} from "wagmi";
 import {LandingNav} from "@/components/LandingNav";
+import {ProtocolFlow} from "@/components/ProtocolFlow";
 import SpecularButton from "@/components/SpecularButton";
 import {Stone} from "@/components/Stone";
 import {useNow, useStone} from "@/hooks/useStone";
@@ -181,6 +182,8 @@ export default function Landing() {
             </div>
           </div>
         </section>
+
+        <ProtocolFlow />
 
         <footer className="border-crack border-t">
           <div className="text-muted mx-auto flex max-w-5xl flex-wrap justify-between gap-4 px-6 py-6 text-[13px]">
