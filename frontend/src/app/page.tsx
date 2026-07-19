@@ -82,11 +82,11 @@ function LiveStone() {
 }
 
 export default function Landing() {
+  // No overflow-hidden on the wrapper. It breaks position: sticky — a sticky child anchors to
+  // the overflow box rather than the viewport, so the nav would scroll away regardless of what
+  // it's told. It was also what silently cropped the stone on narrow screens. The Galaxy is
+  // absolutely positioned within this relative parent, so it stays bounded without it.
   return (
-    {/* No overflow-hidden here. It breaks position: sticky — a sticky child anchors to the
-        overflow box rather than the viewport, so the nav would scroll away regardless of what
-        it's told. It was also what silently cropped the stone on narrow screens. The Galaxy is
-        absolutely positioned within this relative parent, so it stays bounded without it. */}
     <div className="relative min-h-dvh">
       {/* Desaturated to zero and kept dim. At these settings it reads as mineral dust rather
           than a starfield, which is what lets it sit under a geological subject without
