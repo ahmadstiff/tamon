@@ -197,3 +197,148 @@ Cut in this order:
 
 **Never cut:** the stone weathering with the percentage moving, the live shMON rate, or the
 shatter. Those three are the submission.
+
+---
+
+# Voice-over script
+
+Written to be read aloud. Short sentences, no clauses that trip you up mid-take.
+
+Pace is roughly 150 words per minute. Each section lists its word count so you can check
+yourself against the clock. **The pauses are part of the script** — silence while the stone
+visibly changes is doing more work than another sentence would.
+
+Say **"sh-mon"**, one word. Not "S-H-M-O-N".
+
+---
+
+## 1 · The problem — 0:00–0:18 · 44 words
+
+> I have eleven repositories with a first commit and nothing after it.
+>
+> None of them failed because the idea was bad.
+>
+> They failed on a Tuesday. When I decided I'd pick it back up tomorrow — and nothing anywhere
+> registered that I hadn't.
+>
+> So I made skipping cost something.
+
+**Delivery:** flat and matter-of-fact. This is a confession, not a pitch. Land on "cost
+something" and stop.
+
+---
+
+## 2 · The stone — 0:18–0:40 · 56 words
+
+> Every commitment is an NFT that weathers as your deadline gets closer.
+>
+> *(pause — let the percentage tick)*
+>
+> Watch that number. Nothing is animating a mockup. The contract renders that image from the
+> block timestamp. No metadata server. No IPFS.
+>
+> It's the only part of this system that talks to you *while* you're procrastinating.
+>
+> Everything else only talks at the deadline. Which is too late.
+
+**Delivery:** the pause is mandatory. Three to five seconds of silence with the number moving.
+If you talk over it, nobody notices it changed.
+
+---
+
+## 3 · shMON — 0:40–1:12 · 84 words
+
+> Escrow that sits idle is wasted money. So the stake doesn't sit.
+>
+> It goes straight into sh-mon — FastLane's liquid staking vault on Monad — in the same
+> transaction that mints the stone.
+>
+> That rate is being read from the vault right now. It rises every block. Eleven-point-seven MON
+> per share, not one to one — which is why everything in the contract is denominated in shares.
+>
+> There are four liquid staking vaults on Monad. I picked this one because it's the only one
+> with synchronous redemption.
+>
+> The others queue withdrawals behind an unbonding period. That breaks a product whose whole
+> promise is giving your money back on a deadline.
+
+**Delivery:** slow down on "the only one with synchronous redemption". That sentence is the
+difference between using Monad and understanding it.
+
+---
+
+## 4 · The failure — 1:12–1:45 · 78 words
+
+> This one's deadline just passed. Fifty commits in five minutes was never going to happen.
+>
+> *(approve the transaction)*
+>
+> Sweeping an expired commitment is permissionless. Anyone can do it — so it happens the moment
+> someone looks.
+>
+> *(pause — the stone shatters)*
+>
+> That stake is gone.
+>
+> Ten percent leaves circulation completely. There's no treasury address. No rake.
+>
+> The rest goes to everyone whose own money was still at risk.
+
+**Delivery:** don't rush the shatter. Let it land before "That stake is gone."
+
+---
+
+## 5 · The success — 1:45–2:20 · 88 words
+
+> This one I actually did the work on.
+>
+> *(click claim)*
+>
+> The backend reads GitHub. Real commits, with real diffs, on a repo I own, pushed after the
+> commitment existed. Empty commits don't count.
+>
+> It signs that result. The contract checks the signature before it pays anything out.
+>
+> *(pause — the stone crystallises)*
+>
+> Principal. Plus the staking yield it earned while it was locked. Plus a share of what the
+> other commitment forfeited.
+>
+> Two of those three didn't exist before this ran.
+
+**Delivery:** "Two of those three didn't exist before this ran" is the strongest line in the
+video. Slow, then stop.
+
+---
+
+## 6 · The proof — 2:20–2:42 · 52 words
+
+> Everything you just watched is on Monad testnet.
+>
+> One contract. Seventeen kilobytes. Fifty-four tests.
+>
+> The artwork is rendered on-chain by the same contract that holds the money — that's not two
+> systems talking to each other, it's one.
+
+**Delivery:** brisk. This is evidence, not argument.
+
+---
+
+## 7 · The limit — 2:42–3:00 · 51 words
+
+> One thing I want to be straight about.
+>
+> The verifier is a hot key. Settlement and exit are trustless — verification is delegated to
+> one service reading a public source.
+>
+> This is trust-minimised. Not trustless.
+>
+> Removing that key is the next thing to build.
+
+**Delivery:** even tone. No apology, no hedging. Stop after "build" — do not add a sign-off.
+
+---
+
+**Total: 453 words ≈ 3:01 at 150 wpm**, before pauses. The pauses come out of the transaction
+waits, which are dead air anyway. If your read runs long, cut from section 6 first — it is the
+only section whose content is also visible on screen.
